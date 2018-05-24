@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title></title>
+        <!-- <script src="https://d3js.org/d3.v4.min.js"></script> -->
+        <!-- <script src="d3.js"></script>         -->
+        <script src="d3v5.js"></script>
+        <style>
+            svg {
+                background-color: #eeeeee;
+            }
+            .links line {
+              stroke: #999;
+              stroke-opacity: 0.6;
+            }
+            .nodes circle {
+              stroke: #fff;
+              stroke-width: 1.5px;
+            }
+        </style>
+    </head>
+    <body>
+        <svg width="1250" height="590"></svg>
+        <script>
+            var svg = d3.select("svg"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height");
+
+            var simulation = d3.forceSimulation()
+                .force("charge", d3.forceManyBody())
+                .force("center", d3.forceCenter(width/2,height/2))
+                .force("link",d3.forceLink().id(function(d){return d.id}));
+            //import ruby data
+            d3.json("ruby.json").then(function(graph){
+                var link = svg.append("g")
+                    .attr("class","links")
+                    .selectAll("line")
+                    .data(graph.links)
+                    .enter().append("line")
+                    .attr("stroke-width",function(d){
+                        return Math.sqrt(d.Weight);
+                    })
+                var radius = 6
+                var node = svg.append("g")
+                    .attr("class","nodes")
+                    .selectAll("circle")
+                    .data(graph.nodes)
+                    .enter().append("circle")
+                    .attr("r",radius)
+                    .attr("fill","red")
+                    .call(d3.drag()
+                        .on("start", drag_start)
+                        .on("drag", drag_drag)
+                        .on("end", drag_end));
+
+                node.append("title")
+                    .text(function(d){return d.label});
+
+                simulation.nodes(graph.nodes)
+                    .on("tick",tickActions)
+                simulation.force("link")
+                    .links(graph.links)
+                    .distance(function(d){return 30})//link的最小值
+                    //.strength(function(d){return })
+                simulation.force("charge")
+                    .strength(function(d){return -170})//整体缩放图，负值缩
+                    .theta(function(d){return 0.9})
+                    .distanceMin(function(d){return 1})
+                simulation.force("center")
+                    //.strength(function(){return 0.01})
+
+                function tickActions() {
+                    //update circle positions each tick of the simulation
+                    node
+                        .attr("cx", function(d) { return d.x = Math.max(radius,Math.min(width - radius,d.x)); })
+                        .attr("cy", function(d) { return d.y = Math.max(radius,Math.min(height - radius,d.y)); });
+                    //update link positions
+                    //simply tells one end of the line to follow one node around
+                    //and the other end of the line to follow the other node around
+                    link
+                        .attr("x1", function(d) { return d.source.x; })
+                        .attr("y1", function(d) { return d.source.y; })
+                        .attr("x2", function(d) { return d.target.x; })
+                        .attr("y2", function(d) { return d.target.y; });
+                }
+            })
+
+
+            //apply the drag_handler to our circles
+            function drag_start(d) {
+              if (!d3.event.active) simulation.alphaTarget(0.3).restart();
+              d.fx = d.x;
+              d.fy = d.y;
+            }
+
+            function drag_drag(d) {
+              d.fx = d3.event.x;
+              d.fy = d3.event.y;
+            }
+
+            function drag_end(d) {
+              if (!d3.event.active) simulation.alphaTarget(0);
+              d.fx = null;
+              d.fy = null;
+            }
+
+        </script>
+    </body>
+</html>
